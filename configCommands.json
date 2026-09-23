@@ -1,0 +1,118 @@
+{
+  "commandBanned": {},
+  "envGlobal": {
+    "weatherApiKey": "",
+    "goatbotApikey": ""
+  },
+  "envCommands": {
+    "daily": {
+      "rewardFirstDay": {
+        "coin": 500,
+        "exp": 50
+      },
+      "rewardPerDay": {
+        "coin": 100,
+        "exp": 10
+      },
+      "streakBonus": {
+        "enabled": true,
+        "multiplier": 1.5,
+        "maxStreak": 30
+      }
+    },
+    "notification": {
+      "delayPerGroup": 250,
+      "enableConfirmation": true
+    },
+    "rank": {
+      "deltaNext": 5,
+      "expPerMessage": 1,
+      "maxLevel": 999
+    },
+    "rankup": {
+      "deltaNext": 5
+    },
+    "bank": {
+      "interestRate": 0.02,
+      "maxDeposit": 1000000,
+      "interestInterval": 86400000
+    },
+    "casino": {
+      "minBet": 100,
+      "maxBet": 50000,
+      "winChance": 0.45
+    },
+    "blackmarket": {
+      "restockInterval": 3600000,
+      "maxItems": 10
+    },
+    "slot": {
+      "minBet": 50,
+      "maxBet": 10000
+    },
+    "quiz": {
+      "timeLimit": 30,
+      "rewardCorrect": {
+        "coin": 200,
+        "exp": 20
+      }
+    },
+    "appstore": {
+      "limitResult": 5
+    },
+    "dhbc": {
+      "reward": 1000
+    },
+    "wordgame": {
+      "timeLimit": 60,
+      "rewardCorrect": {
+        "coin": 150,
+        "exp": 15
+      }
+    },
+    "translate": {
+      "defaultLang": "en"
+    },
+    "yt": {
+      "maxResults": 5,
+      "maxDuration": 600
+    },
+    "tiktok": {
+      "maxResults": 3
+    },
+    "deepseek": {
+      "maxTokens": 1000,
+      "model": "deepseek-chat"
+    },
+    "deepai": {
+      "style": "realistic"
+    },
+    "pair": {
+      "cooldown": 86400000,
+      "allowSameGender": false
+    },
+    "hack": {
+      "cooldown": 3600000,
+      "successRate": 0.4,
+      "stealPercent": 0.1,
+      "maxSteal": 5000
+    },
+    "balance": {
+      "startingCoins": 500
+    },
+    "top": {
+      "limit": 10
+    }
+  },
+  "envEvents": {
+    "logsbot": {
+      "allow": true
+    },
+    "welcome": {
+      "enable": true
+    },
+    "leave": {
+      "enable": true
+    }
+  }
+}
