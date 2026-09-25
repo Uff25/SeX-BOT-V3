@@ -25,25 +25,25 @@
     "ignoreCommand": []
   },
   "adminBot": [
-    "61592031400983",
-    "61589129806243"
+    "100028959431665",
+    "61591654275272"
   ],
   "developer": [
-    "61592031400983",
-    "61589129806243"
+    "100028959431665",
+    "61591654275272"
   ],
   "vipuser": [
-    "61592031400983",
-    "61589129806243"
+    "100028959431665",
+    "61591654275272"
   ],
   "premium": [
-    "61592031400983",
-    "61589129806243"
+    "100028959431665",
+    "61591654275272"
   ],
   "creator": [
-    "61592031400983",
-    "61575452277462",
-    "61589129806243"
+    "100028959431665",
+    "61591654275272",
+    ""
   ],
   "reactBy": {
     "delete": [
@@ -69,8 +69,8 @@
     "whiteListIds": [],
     "notes": "if you enable this feature, only the ids in the whiteListIds section can use the bot"
   },
-  "nickNameBot": "X69X BOT V3",
-  "prefix": ")",
+  "nickNameBot": "𓆩 রাজনন্দিনী 𓆪",
+  "prefix": "!",
   "database": {
     "type": "mongodb",
     "uriMongodb": "mongodb+srv://Hinata:W2fNh.H9iWFU22F@cluster0.cyattib.mongodb.net/OZADNOOB1?retryWrites=true&w=majority&appName=Cluster0",
