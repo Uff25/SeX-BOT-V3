@@ -1,46 +1,53 @@
-const axios = require("axios");
-
 module.exports = {
   config: {
     name: "fork",
-    version: "0.0.7",
-    author: "Azadx69x",
-    countDown: 3,
+    version: "2.0.0",
+    author: "ARIYAN SABBIR",
+    countDown: 5,
     role: 0,
-    category: "system",
-    shortDescription: "𝐆𝐢𝐭𝐇𝐮𝐛 𝐅𝐨𝐫𝐤",
-    longDescription: "𝐅𝐞𝐭𝐜𝐡 𝐟𝐨𝐫𝐤",
+
+    shortDescription: {
+      en: "Get the GitHub fork link of ARIYAN CHAT BOT."
+    },
+
+    longDescription: {
+      en: "Provides the official GitHub fork link to create your own copy of ARIYAN CHAT BOT."
+    },
+
+    category: "info",
+
     guide: {
-      en: "{pn}"
+      en: "{p}fork"
     }
   },
 
   onStart: async function ({ message }) {
-    try {
-      const repo = "azadx69x/X69X-BOT-V3";
+    const forkLink =
+      "https://github.com/ItsAriyan-X/ARIYAN_CHAT_BOT/fork";
 
-      const res = await axios.get(`https://api.github.com/repos/${repo}`);
-      const data = res.data;
+    const replyText =
+`╭━━━〔 🤖 ARIYAN CHAT BOT 〕━━━╮
 
-      const text = `
-𝐗69𝐗 𝐁𝐎𝐓 𝐕3
-𝐔𝐩𝐝𝐚𝐭𝐞 𝐅𝐨𝐫𝐤
+✨ নিজের ফেসবুক আইডিতে
+আমাদের Bot সেটআপ করতে চান?
 
-📦 𝐍𝐚𝐦𝐞: ${data.name}
-👑 𝐎𝐰𝐧𝐞𝐫: ${data.owner.login}
-🍴 𝐅𝐨𝐫𝐤𝐬: ${data.forks_count}
-⭐ 𝐒𝐭𝐚𝐫𝐬: ${data.stargazers_count}
-👀 𝐖𝐚𝐭𝐜𝐡𝐞𝐫𝐬: ${data.watchers_count}
+🔗 GitHub Fork Link
+━━━━━━━━━━━━━━━━━━
+${forkLink}
+━━━━━━━━━━━━━━━━━━
 
-🔗 𝐅𝐨𝐫𝐤 𝐋𝐢𝐧𝐤:
-${data.html_url}
-`;
+📌 কীভাবে করবেন?
+➊ উপরের GitHub লিংকে ক্লিক করুন
+➋ নিজের GitHub account-এ Login করুন
+➌ "Fork" বাটনে ক্লিক করুন
+➍ Fork হয়ে গেলে Repository থেকে
+   Bot-এর ফাইলগুলো ব্যবহার করুন
 
-      return message.reply(text);
+⚡ ARIYAN CHAT BOT
+👑 Author: ARIYAN SABBIR
 
-    } catch (err) {
-      console.error("FORK CMD ERROR:", err);
-      return message.reply("❌ 𝐂𝐨𝐮𝐥𝐝 𝐧𝐨𝐭 𝐟𝐞𝐭𝐜𝐡 𝐟𝐨𝐫𝐤.");
-    }
+╰━━━━━━━━━━━━━━━━━━━━╯`;
+
+    return message.reply(replyText);
   }
 };
