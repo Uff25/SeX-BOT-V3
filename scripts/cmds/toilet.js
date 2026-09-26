@@ -4,8 +4,8 @@ const path = require("path");
 
 module.exports = {
   config: {
-    name: "nokia",
-    version: "3.2",
+    name: "toilet",
+    version: "3.3",
     author: "Siam Ahmed Saan",
     countDown: 5,
     role: 0,
@@ -20,7 +20,7 @@ module.exports = {
 
     api.setMessageReaction("⏳", messageID, () => {}, true);
 
-    const bgUrl = "https://iili.io/qJehE8u.png"; 
+    const bgUrl = "https://i.imgur.com/AZ5SByA.jpeg";
     let targetID;
 
     if (type === "message_reply") {
@@ -41,20 +41,27 @@ module.exports = {
 
       const canvas = createCanvas(background.width, background.height);
       const ctx = canvas.getContext('2d');
-      
+
       ctx.drawImage(background, 0, 0, canvas.width, canvas.height);
 
-      const moveRight = 80;   
-      const moveDown = 280;    
-      const widthSize = 320;   
-      const heightSize = 245;  
+      const x = 185;
+      const y = 230;
+      const size = 80;
 
-      ctx.drawImage(avatar, moveRight, moveDown, widthSize, heightSize);
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(x + size / 2, y + size / 2, size / 2, 0, Math.PI * 2);
+      ctx.closePath();
+      ctx.clip();
 
-      const cachePath = path.join(cacheDir, `nokia_${targetID}.png`);
+      ctx.drawImage(avatar, x, y, size, size);
+      ctx.restore();
+
+      const cachePath = path.join(cacheDir, `toilet_${targetID}.png`);
       fs.writeFileSync(cachePath, canvas.toBuffer());
 
       return api.sendMessage({
+        body: "You deserve this place 🤧🔥",
         attachment: fs.createReadStream(cachePath)
       }, threadID, () => {
         api.setMessageReaction("✅", messageID, () => {}, true);
@@ -63,7 +70,7 @@ module.exports = {
 
     } catch (e) {
       api.setMessageReaction("❌", messageID, () => {}, true);
-      return api.sendMessage("", threadID, messageID);
+      return api.sendMessage("❌ Error processing image", threadID, messageID);
     }
   }
 };

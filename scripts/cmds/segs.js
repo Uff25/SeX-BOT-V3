@@ -1,214 +1,156 @@
 const axios = require("axios");
-const fs = require("fs");
+const fs = require("fs-extra");
 const path = require("path");
-
-let userSession = {};
-let botMessages = {};
 
 module.exports = {
   config: {
     name: "segs",
-    version: "1.6",
-    author: "Azadx69x",
+    aliases: ["xnxx"],
+    version: "5.0",
+    author: "Siam Ahmed Saan",
+    countDown: 5,
     role: 2,
-    category: "18+",
-    shortDescription: "𝐇𝐃 𝐕𝐢𝐝𝐞𝐨 𝐒𝐞𝐚𝐫𝐜𝐡 & 𝐃𝐨𝐰𝐧𝐥𝐨𝐚𝐝",
-    longDescription: "𝐒𝐞𝐚𝐫𝐜𝐡 𝐟𝐨𝐫 𝐇𝐃 𝐯𝐢𝐝𝐞𝐨𝐬 𝐚𝐧𝐝 𝐝𝐨𝐰𝐧𝐥𝐨𝐚𝐝"
+    shortDescription: "Search and download videos",
+    category: "nsfw",
+    guide: "{pn} [query]"
   },
 
-  onStart: async ({ api, event, args }) => {
-    const keyword = args.join(" ");
-    const thread = event.threadID;
-    const sender = event.senderID;
+  onStart: async function ({ api, event, args, message }) {
+    const { threadID, messageID, senderID } = event;
+    const query = args.join(" ");
 
-    clearBotMessages(api, thread);
-    botMessages[thread] = [];
-
-    if (!keyword) {
-      const msg = await api.sendMessage("🔴 𝙺𝙴𝚈𝚆𝙾𝚁𝙳 𝙳𝙴𝚄𝙽", thread);
-      botMessages[thread].push(msg.messageID);
-      autoDelete(api, msg.messageID, 5000);
-      return api.setMessageReaction("❌", event.messageID, () => {}, true);
-    }
-
-    const searchMsg = await api.sendMessage("🔍 𝚂𝙴𝙰𝚁𝙲𝙷𝙸𝙽𝙶...", thread);
-    botMessages[thread].push(searchMsg.messageID);
-    api.setMessageReaction("⏳", event.messageID, () => {}, true);
+    if (!query) return message.reply("❌ | Please provide a search query!");
 
     try {
-      const res = await axios.get(
-        `https://azadx69x-segs.vercel.app/api/search?q=${encodeURIComponent(keyword)}`,
-        { timeout: 15000 }
-      );
+      api.setMessageReaction("⏳", messageID, () => {}, true);
 
-      const results = Array.isArray(res.data?.list) ? res.data.list : [];
+      const res = await axios.get(`https://xalman-apis.vercel.app/api/xnxxsearch?q=${encodeURIComponent(query)}`);
+      const results = res.data.results.slice(0, 5);
 
-      if (!results.length) {
-        autoDelete(api, searchMsg.messageID, 500);
-        const noResultMsg = await api.sendMessage("❌ 𝙽𝙾 𝚁𝙴𝚂𝚄𝙻𝚃𝚂", thread);
-        botMessages[thread].push(noResultMsg.messageID);
-        autoDelete(api, noResultMsg.messageID, 8000);
-        return api.setMessageReaction("❌", event.messageID, () => {}, true);
+      if (!results || results.length === 0) {
+        api.setMessageReaction("❌", messageID, () => {}, true);
+        return message.reply("❌ | No results found!");
       }
 
-      userSession[sender] = {
-        results,
-        expires: Date.now() + 90_000,
-        threadID: thread,
-        keyword: keyword
-      };
+      const cacheDir = path.join(__dirname, "cache");
+      if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir, { recursive: true });
 
-      autoDelete(api, searchMsg.messageID, 500);
-      sendList(api, thread, sender, event.messageID);
+      const attachments = [];
+      let msg = `🔎 Search Results for: ${query}\n━━━━━━━━━━━━━━━━━━━━\n`;
 
-    } catch (e) {
-      autoDelete(api, searchMsg.messageID, 500);
-      const errorMsg = await api.sendMessage("❌ 𝙴𝚁𝚁𝙾𝚁: 𝙰𝙿𝙸 𝙵𝙰𝙸𝙻𝙴𝙳", thread);
-      botMessages[thread].push(errorMsg.messageID);
-      autoDelete(api, errorMsg.messageID, 8000);
-      api.setMessageReaction("❌", event.messageID, () => {}, true);
+      for (let i = 0; i < results.length; i++) {
+        const video = results[i];
+        msg += `${i + 1}. ${video.title}\n\n`;
+
+        const imgPath = path.join(cacheDir, `thumb_${senderID}_${i}.jpg`);
+        try {
+          const imgRes = await axios.get(video.thumbnail, { responseType: "arraybuffer" });
+          fs.writeFileSync(imgPath, Buffer.from(imgRes.data, "binary"));
+          attachments.push(fs.createReadStream(imgPath));
+        } catch (e) {
+          console.error("Thumbnail download failed");
+        }
+      }
+
+      msg += `━━━━━━━━━━━━━━━━━━━━\nReply with 1-5 to select and download.`;
+
+      api.setMessageReaction("✅", messageID, () => {}, true);
+
+      return api.sendMessage({ body: msg, attachment: attachments }, threadID, (err, info) => {
+        attachments.forEach(file => { if (fs.existsSync(file.path)) fs.unlinkSync(file.path); });
+        
+        global.GoatBot.onReply.set(info.messageID, {
+          commandName: this.config.name,
+          author: senderID,
+          results: results,
+          listMessageID: info.messageID
+        });
+      }, messageID);
+
+    } catch (err) {
+      api.setMessageReaction("❌", messageID, () => {}, true);
+      return message.reply("❌ | API Error!");
     }
   },
 
-  onChat: async ({ api, event }) => {
-    const sender = event.senderID;
-    const thread = event.threadID;
+  onReply: async function ({ api, event, Reply, message }) {
+    const { author, results, listMessageID } = Reply;
+    if (event.senderID !== author) return;
 
-    if (!userSession[sender]) return;
-    if (userSession[sender].threadID !== thread) return;
+    const index = parseInt(event.body) - 1;
+    if (isNaN(index) || index < 0 || index >= results.length) return;
 
-    const body = event.body;
-    if (!body || !body.trim()) return;
+    const selected = results[index];
+    const videoUrl = selected.download_url;
 
-    const prefix = global.GoatBot?.config?.prefix || ")";
-    if (body.trim().startsWith(prefix)) return;
-
-    const msg = body.trim();
-
-    if (Date.now() > userSession[sender].expires) {
-      clearBotMessages(api, thread);
-      delete userSession[sender];
-      const timeoutMsg = await api.sendMessage("⏰ 𝚃𝙸𝙼𝙴𝙾𝚄𝚃 — 𝚁𝚄𝙽 𝙲𝙼𝙳 𝙰𝙶𝙰𝙸𝙽", thread);
-      autoDelete(api, timeoutMsg.messageID, 5000);
-      return api.setMessageReaction("⏳", event.messageID, () => {}, true);
+    if (!videoUrl || videoUrl.includes("Feature coming soon")) {
+      return message.reply("❌ | Download link not available for this video.");
     }
-
-    const session = userSession[sender];
-
-    if (!/^\d+$/.test(msg)) return;
-
-    const number = parseInt(msg);
-    const index = number - 1;
-
-    if (number < 1 || number > session.results.length || !session.results[index]) {
-      const invalidMsg = await api.sendMessage("❌ 𝙸𝙽𝚅𝙰𝙻𝙸𝙳 𝙽𝚄𝙼𝙱𝙴𝚁 ❌", thread);
-      autoDelete(api, invalidMsg.messageID, 3000);
-      return api.setMessageReaction("❌", event.messageID, () => {}, true);
-    }
-
-    const item = session.results[index];
-
-    api.setMessageReaction("📤", event.messageID, () => {}, true);
-    clearBotMessages(api, thread);
-    delete userSession[sender];
-
-    const filePath = path.join(__dirname, `video_${sender}_${Date.now()}.mp4`);
 
     try {
-      await streamToFile(item.video, filePath, {
-        headers: { "User-Agent": "Mozilla/5.0" },
-        timeout: 60000
+      api.unsendMessage(listMessageID);
+      
+                  api.setMessageReaction("📥", event.messageID, () => {}, true);
+
+      const cacheDir = path.join(__dirname, "cache");
+      if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir, { recursive: true });
+
+      const tempFilePath = path.join(cacheDir, `${Date.now()}_video.mp4`);
+      const headRes = await axios.head(videoUrl).catch(() => null);
+      if (headRes && headRes.headers['content-length']) {
+        const fileSizeMB = parseInt(headRes.headers['content-length']) / (1024 * 1024);
+        if (fileSizeMB > 80) { 
+          api.setMessageReaction("❌", event.messageID, () => {}, true);
+          return message.reply("❌ | Video file size is too large to send (>80MB).");
+        }
+      }
+
+      const response = await axios({
+        method: "GET",
+        url: videoUrl,
+        responseType: "stream",
+        timeout: 200000, 
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36',
+          'Accept': '*/*'
+        }
       });
 
-      const videoInfo = `━━━━━━━━━━━━━━━━━━━━
-𝐕𝐈𝐃𝐄𝐎 𝐃𝐎𝐖𝐍𝐋𝐎𝐀𝐃𝐄𝐃 ✅
-╭─╼━━━━━━━━━━━━━━╾─╮
-│ 🎬  ${item.name}
-│ ⏱  ${item.time}
-│ 🔢  ${number}
-│ 📊  ${session.results.length} results
-│ 🔍  "${session.keyword}"
-╰─━━━━━━━━━━━━━━━╾─╯
-━━━━━━━━━━━━━━━━━━━━`;
+      const writer = fs.createWriteStream(tempFilePath);
+      response.data.pipe(writer);
 
-      const videoMsg = await api.sendMessage(
-        { body: videoInfo, attachment: fs.createReadStream(filePath) },
-        thread
-      );
+      await new Promise((resolve, reject) => {
+        writer.on("finish", resolve);
+        writer.on("error", (err) => {
+          writer.close();
+          reject(err);
+        });
+        response.data.on("error", (err) => {
+          writer.close();
+          reject(err);
+        });
+      });
 
-      if (!botMessages[thread]) botMessages[thread] = [];
-      botMessages[thread].push(videoMsg.messageID);
+      return api.sendMessage({
+        body: `✅ | Title: ${selected.title}`,
+        attachment: fs.createReadStream(tempFilePath)
+      }, event.threadID, (err) => {
 
-      api.setMessageReaction("✅", event.messageID, () => {}, true);
+        if (fs.existsSync(tempFilePath)) fs.unlinkSync(tempFilePath);
 
-    } catch (e) {
-      const errorMsg = await api.sendMessage("❌ 𝙳𝙾𝚆𝙽𝙻𝙾𝙰𝙳 𝙵𝙰𝙸𝙻𝙴𝙳 — 𝚁𝚄𝙽 𝙲𝙼𝙳 𝙰𝙶𝙰𝙸𝙽", thread);
-      if (!botMessages[thread]) botMessages[thread] = [];
-      botMessages[thread].push(errorMsg.messageID);
-      autoDelete(api, errorMsg.messageID, 8000);
+        if (err) {
+          api.setMessageReaction("❌", event.messageID, () => {}, true);
+          return message.reply("❌ | Failed to send video attachment.");
+        }
+        
+        api.setMessageReaction("✅", event.messageID, () => {}, true);
+      }, event.messageID);
+
+    } catch (err) {
+      console.error("Stream Download Error:", err);
       api.setMessageReaction("❌", event.messageID, () => {}, true);
-    } finally {
-      if (fs.existsSync(filePath)) {
-        try { fs.unlinkSync(filePath); } catch {}
-      }
+      return message.reply("❌ | Failed to download or process video stream.");
     }
   }
 };
-
-function sendList(api, thread, user, messageID) {
-  const s = userSession[user];
-  if (!s) return;
-
-  let listMessage = `━━━━━━━━━━━━━━━━━━━━
-𝐒𝐄𝐀𝐑𝐂𝐇 𝐑𝐄𝐒𝐔𝐋𝐓𝐒
-━━━━━━━━━━━━━━━━━━━━\n\n`;
-
-  const showCount = Math.min(20, s.results.length);
-
-  for (let i = 0; i < showCount; i++) {
-    const item = s.results[i];
-    const number = i + 1;
-    const title = item.name.length > 50 ? item.name.substring(0, 47) + "..." : item.name;
-    listMessage += `【${number}】 ${title}\n      ⏱ ${item.time}\n\n`;
-  }
-
-  listMessage += `━━━━━━━━━━━━━━━━━━━━
-𝐒𝐄𝐋𝐄𝐂𝐓: 𝟏-${showCount}
-━━━━━━━━━━━━━━━━━━━━`;
-
-  api.sendMessage(listMessage, thread).then(msg => {
-    if (!botMessages[thread]) botMessages[thread] = [];
-    botMessages[thread].push(msg.messageID);
-    if (messageID) api.setMessageReaction("✅", messageID, () => {}, true);
-  });
-}
-
-function clearBotMessages(api, thread) {
-  if (botMessages[thread]) {
-    for (const messageID of botMessages[thread]) {
-      try { api.unsendMessage(messageID); } catch {}
-    }
-    botMessages[thread] = [];
-  }
-}
-
-function autoDelete(api, messageID, delay) {
-  setTimeout(() => {
-    try { api.unsendMessage(messageID); } catch {}
-  }, delay);
-}
-
-function streamToFile(url, filePath, axiosOptions = {}) {
-  return new Promise(async (resolve, reject) => {
-    try {
-      const res = await axios.get(url, { ...axiosOptions, responseType: "stream" });
-      const writer = fs.createWriteStream(filePath);
-      res.data.pipe(writer);
-      writer.on("finish", resolve);
-      writer.on("error", reject);
-      res.data.on("error", reject);
-    } catch (err) {
-      reject(err);
-    }
-  });
-}
+        

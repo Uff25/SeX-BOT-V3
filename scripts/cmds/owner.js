@@ -1,53 +1,139 @@
+const fs = require("fs-extra");
+const path = require("path");
+const axios = require("axios");
+
+const assetsDir = path.join(__dirname, "assets");
+const statsPath = path.join(assetsDir, "owner_stats.json");
+
+// ✅ যে ফেসবুক প্রোফাইলের ছবি ব্যবহার করতে চান তার ID
+const OWNER_FB_ID = "100028959431665";
+
+// ✅ ব্যবহারের সংখ্যা ট্র্যাক করার হেল্পার
+function getAndIncrementUsageCount() {
+	fs.ensureDirSync(assetsDir);
+	let stats = { count: 0 };
+	try {
+		if (fs.existsSync(statsPath)) stats = fs.readJsonSync(statsPath);
+	} catch (e) {}
+	stats.count = (stats.count || 0) + 1;
+	try { fs.writeJsonSync(statsPath, stats); } catch (e) {}
+	return stats.count;
+}
+
 module.exports = {
-  config: {
-    name: "owner",
-    version: "0.0.7",
-    author: "Azadx69x",
-    category: "owner",
-    guide: { en: "view owner info." },
-    usePrefix: true
-  },
-  sentThreads: new Map(),
-  onStart: async function ({ api, event, message }) {
-    const threadID = event.threadID;
-    const OWNER_ID = "61591758460039";
-    if (this.sentThreads.has(threadID)) return;
-    this.sentThreads.set(threadID, true);
-    
-    const ownerInfo = {
-      name: "𝐌𝐨𝐡𝐚𝐦𝐦𝐚𝐝 𝐀𝐳𝐚𝐝",
-      age: "𝟏𝟖",
-      from: "𝐁𝐚𝐧𝐠𝐥𝐚𝐝𝐞𝐬𝐡 🇧🇩",
-      address: "𝐂𝐡𝐢𝐭𝐭𝐚𝐠𝐨𝐧𝐠",
-      work: "𝐒𝐭𝐮𝐝𝐞𝐧𝐭",
-      class: "𝟓",
-      religion: "𝐈𝐬𝐥𝐚𝐦",
-      role: "𝐁𝐨𝐭 𝐎𝐰𝐧𝐞𝐫",
-      kalema: "لَا إِلٰهَ إِلَّا اللهُ مُحَمَّدٌ رَسُوْلُ اللهِ"
-    };
+	config: {
+		name: "owner",
+		aliases: ["info", "botowner", "owner", "admin"],
+		version: "4.2",
+		author: "Sk Habibulla",
+		countDown: 5,
+		role: 0,
+		description: {
+			en: "👑 Show premium owner information card"
+		},
+		category: "info",
+		guide: {
+			en: "{pn}"
+		}
+	},
 
-    const msg = `
-🎀 𝐎ᴡɴᴇʀ 𝐈ɴꜰᴏ ✨
+	onStart: async function ({ message, event, api }) {
+		const ownerName = "Ariyan";
+		const nick = "♡┋Sabbir";
+		const relation = "Single";
+		const profession = "Gorib";
+		const memberSince = "2023";
 
-❍ 𝐍ᴀᴍᴇ _ ${ownerInfo.name}
-❍ 𝐀ɢᴇ _ ${ownerInfo.age}
-❍ 𝐅ʀᴏᴍ _ ${ownerInfo.from}
-❍ 𝐀ᴅᴅʀᴇꜱꜱ _ ${ownerInfo.address}
-❍ 𝐖ᴏʀᴋ _ ${ownerInfo.work}
-❍ 𝐂ʟᴀꜱꜱ _ ${ownerInfo.class}
-❍ 𝐑ᴇʟɪɢɪᴏɴ _ ${ownerInfo.religion}
-❍ 𝐑ᴏʟᴇ _ ${ownerInfo.role}
-❍ 𝐊ᴀʟᴇᴍᴀ _ "${ownerInfo.kalema}",
-━━━━━━━━━━━━━━━━━━━━
-💫 𝐓ʜᴀɴᴋꜱ ꜰᴏʀ ᴡᴀᴛᴄʜɪɴɢ
-📝 𝐀ɴʏ ᴘʀᴏʙʟᴇᴍ? 𝐓ᴀʟᴋ ᴛᴏ ᴀᴅᴍɪɴ.`;
+		const usageCount = getAndIncrementUsageCount();
 
-    try {
-      await api.shareContact(msg, OWNER_ID, threadID);
-    } catch (e) {
-      console.error("Error sending owner contact card:", e);
-      await message.reply("❌ 𝐄ʀʀᴏʀ");
-    }
-    setTimeout(() => this.sentThreads.delete(threadID), 300000);
-  }
+		const loadingInfo = await message.reply("⏳ Loading owner card...");
+
+		const now = new Date();
+		const time = now.toLocaleString("en-BD", {
+			timeZone: "Asia/Dhaka",
+			hour: "2-digit",
+			minute: "2-digit",
+			second: "2-digit",
+			hour12: true
+		});
+		const dateStr = now.toLocaleDateString("en-BD", {
+			timeZone: "Asia/Kolkata",
+			day: "2-digit",
+			month: "short",
+			year: "numeric"
+		});
+
+		const footers = [
+			"✦ Powered by Ariyan Bot ✦",
+			"✦ Made with ❤️ by Sk Sabbir ✦",
+			"✦ Owner is always watching ✦",
+			"✦ Respect the Owner ✦"
+		];
+		const randomFooter = footers[Math.floor(Math.random() * footers.length)];
+
+		const body =
+`╭─────────────────╮
+│  👑 𝙊𝙒𝙉𝙀𝙍  𝙄𝙉𝙁𝙊 👑  │
+╰─────────────────╯
+
+👤 𝙉𝙖𝙢𝙚       : ${ownerName}
+🧸 𝙉𝙞𝙘𝙠       : ${nick}
+💘 𝙍𝙚𝙡𝙖𝙩𝙞𝙤𝙣  : ${relation}
+🎓 𝙋𝙧𝙤𝙛𝙚𝙨𝙨𝙞𝙤𝙣 : ${profession}
+📆 𝙈𝙚𝙢𝙗𝙚𝙧 𝙨𝙞𝙣𝙘𝙚: ${memberSince}
+
+
+
+
+
+╭──── 📊 𝙎𝙏𝘼𝙏𝙎 ────╮
+📅 𝘿𝙖𝙩𝙚       : ${dateStr}
+⏰ 𝙏𝙞𝙢𝙚       : ${time}
+🔥 𝙑𝙞𝙚𝙬𝙚𝙙     : ${usageCount} 𝙩𝙞𝙢𝙚𝙨
+📍 𝙎𝙩𝙖𝙩𝙪𝙨     : Online ✅
+╰──────────────────╯
+
+${randomFooter}`;
+
+		const imageStream = await resolveOwnerImage();
+
+		try {
+			if (imageStream) {
+				await api.unsendMessage(loadingInfo.messageID);
+				const sent = await message.reply({ body, attachment: imageStream });
+				try { api.setMessageReaction("👑", sent.messageID, () => {}, true); } catch (e) {}
+			} else {
+				await api.unsendMessage(loadingInfo.messageID);
+				const sent = await message.reply(body + "\n\n⚠️ Image load failed");
+				try { api.setMessageReaction("👑", sent.messageID, () => {}, true); } catch (e) {}
+			}
+		} catch (err) {
+			console.log("[owner] সেন্ড করতে ব্যর্থ:", err.message);
+			return message.reply(body);
+		}
+	}
 };
+
+// ═══════════ Helper: শুধু Facebook profile picture রিসলভ করা ═══════════
+async function resolveOwnerImage() {
+	try {
+		fs.ensureDirSync(assetsDir);
+
+		// শুধু Facebook Graph API দিয়ে প্রোফাইল পিকচার ফেচ (লোকাল ছবি বাদ)
+		const imgUrl = `https://graph.facebook.com/${OWNER_FB_ID}/picture?width=720&height=720&access_token=6628568379%7Cc1e620fa708a1d5696fb991c1bde5662`;
+
+		const res = await axios.get(imgUrl, {
+			responseType: "arraybuffer",
+			timeout: 15000,
+			maxRedirects: 5,
+			headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" }
+		});
+
+		const tempPath = path.join(assetsDir, "owner_fb_temp.jpg");
+		fs.writeFileSync(tempPath, Buffer.from(res.data));
+		return fs.createReadStream(tempPath);
+	} catch (err) {
+		console.log("[owner] ছবি রিসলভ করতে ব্যর্থ:", err.message);
+		return null;
+	}
+      }

@@ -1,101 +1,173 @@
-const { config } = global.GoatBot;
-const { writeFileSync } = require("fs-extra");
-const axios = require("axios");
+const header = `👑 VIP USER 🫦 👑`;
+
+const fs = require("fs");
+
+const vipFilePath = "vip.json";
+const changelogFilePath = "changelog.json"; // Path to your changelog file
+
+function loadVIPData() {
+	try {
+		const data = fs.readFileSync(vipFilePath);
+		return JSON.parse(data);
+	} catch (err) {
+		console.error("Error loading VIP data:", err);
+		return {};
+	}
+}
+
+function saveVIPData(data) {
+	try {
+		fs.writeFileSync(vipFilePath, JSON.stringify(data, null, 2));
+	} catch (err) {
+		console.error("Error saving VIP data:", err);
+	}
+}
+
+function loadChangelog() {
+	try {
+		const data = fs.readFileSync(changelogFilePath);
+		return JSON.parse(data);
+	} catch (err) {
+		console.error("Error loading changelog data:", err);
+		return {};
+	}
+}
 
 module.exports = {
-  config: {
-    name: "vip",
-    version: "0.0.7",
-    author: "Azadx69x",
-    countDown: 5,
-    role: 2,
-    description: { en: "Add, remove, list VIP users" },
-    category: "box chat",
-    guide: { en: "{pn} [add/remove/list] [UID/@mention/reply]" }
-  },
-  onStart: async function ({ message, args, usersData, event, api }) {
-    let vip = config.vipuser || config.vipUser || config.vip || [];
-    vip = vip.filter(id => id && String(id).trim() && !isNaN(id));
+	config: {
+		name: "vip",
+		version: "1.0", // Updated version to 1.0
+		author: "Siam Ahmed Saan",
+		role: 2,
+		category: "Config",
+		guide: {
+			en: "!vip add <uid> - Add a user to the VIP list\n!vip rm <uid> - Remove a user from the VIP list\n!vip list - List VIP users\n!vip changelog - View the changelog",
+		},
+	},
 
-    const getUser = async (id) => {
-      try {
-        const name = await usersData.getName(id).catch(() => null);
-        if (name) return { id, name };
-        const info = await api.getUserInfo(id).catch(() => null);
-        if (info?.[id]) return { id, name: info[id].name };
-        const token = process.env.FACEBOOK_GRAPH_ACCESS_TOKEN;
-        if (token) {
-          const { data } = await axios.get(`https://graph.facebook.com/${id}`, {
-            params: { fields: "name", access_token: token },
-            timeout: 5000
-          }).catch(() => ({ data: null }));
-          if (data?.name) return { id, name: data.name };
-        }
-        return { id, name: `User_${String(id).slice(0, 8)}` };
-      } catch { return { id, name: `User_${String(id).slice(0, 8)}` }; }
-    };
+	onStart: async function ({ api, event, args, message, usersData }) {
+		const subcommand = args[0];
 
-    const getIds = () => {
-      let ids = [];
-      if (event.mentions) ids = Object.keys(event.mentions);
-      else if (event.messageReply?.senderID) ids = [event.messageReply.senderID];
-      else if (args.length > 1) ids = args.slice(1).filter(id => !isNaN(id));
-      else if (args[0] === "add") ids = [event.senderID];
-      return [...new Set(ids.map(id => id.toString().trim()))];
-    };
+		if (!subcommand) {
+			return;
+		}
 
-    const cmd = args[0]?.toLowerCase();
-    if (cmd === "list" || cmd === "-l") {
-      if (!vip.length) return message.reply("⚠️ No VIP users found.");
-      const list = await Promise.all(vip.map(id => getUser(id)));
-      return message.reply(`👑 VIP Users List\n${list.map((u,i) => `${i+1}. ${u.name} (${u.id})`).join("\n")}\n📊 Total: ${list.length}`);
-    }
+		// Load VIP data from the JSON file
+		let vipData = loadVIPData();
 
-    if (cmd === "add" || cmd === "-a") {
-      const ids = getIds();
-      if (!ids.length) return message.reply("⚠️ Please reply/tag or provide UID.");
-      const added = [], already = [];
-      const newVip = [...vip];
-      for (const id of ids) {
-        if (newVip.includes(id)) already.push(id);
-        else { newVip.push(id); added.push(id); }
-      }
-      if (added.length) {
-        config.vipuser = newVip;
-        writeFileSync(global.client.dirConfig, JSON.stringify(config, null, 2));
-        const info = await Promise.all(added.map(id => getUser(id)));
-        await message.reply(`✅ VIP Added Successfully!\n👤 ${info.map(u => `${u.name} (${u.id})`).join("\n")}\n📊 Added: ${added.length}`);
-      }
-      if (already.length) {
-        const info = await Promise.all(already.map(id => getUser(id)));
-        return message.reply(`⚠️ Already VIP\n👤 ${info.map(u => `${u.name} (${u.id})`).join("\n")}\n📊 Total: ${already.length}`);
-      }
-      return;
-    }
+		if (subcommand === "add") {
+			const uidToAdd = args[1];
+			if (uidToAdd) {
+				const userData = await usersData.get(uidToAdd);
+				if (userData) {
+					const userName = userData.name || "Unknown User";
+					// Send a message to the added VIP user
+					message.reply(`${header}
+${userName} (${uidToAdd}) has been successfully added to the VIP list.`);
+					api.sendMessage(`${header}
+Congratulations ${userName}! (${uidToAdd}), you have been added to the VIP list. Enjoy the VIP Features!!!`, uidToAdd);
+					// Send a message to all VIP users
+					Object.keys(vipData).forEach(async (uid) => {
+						if (uid !== uidToAdd) {
+							const vipUserData = await usersData.get(uid);
+							if (vipUserData) {
+								const vipUserName = vipUserData.name || "Unknown User";
+								api.sendMessage(`${header}
+Hello VIP Users! Let's welcome our new VIP user!
+Name: ${userName} (${uidToAdd})
+You can use vipnoti command if you want to send something to them!`, uid);
+							}
+						}
+					});
+					// Update the VIP data and save it
+					vipData[uidToAdd] = true;
+					saveVIPData(vipData);
+				} else {
+					message.reply(`${header}
+User with UID ${uidToAdd} not found.`);
+				}
+			} else {
+				message.reply(`${header}
+Please provide a UID to add to the VIP list.`);
+			}
+		} else if (subcommand === "rm") {
+			const uidToRemove = args[1];
+			if (uidToRemove && vipData[uidToRemove]) {
+				delete vipData[uidToRemove];
+				saveVIPData(vipData);
+				const userData = await usersData.get(uidToRemove);
+				if (userData) {
+					const userName = userData.name || "Unknown User";
+					message.reply(`${header}
+${userName} (${uidToRemove}) has been successfully removed from the VIP list.`);
+					// Send a message to the removed VIP user
+					api.sendMessage(`${header}
+Sorry ${userName} (${uidToRemove}), you have been removed from the VIP list.`, uidToRemove);
+					// Send a message to all VIP users
+					Object.keys(vipData).forEach(async (uid) => {
+						if (uid !== uidToRemove) {
+							const vipUserData = await usersData.get(uid);
+							if (vipUserData) {
+								const vipUserName = vipUserData.name || "Unknown User";
+								api.sendMessage(`${header}
+Hello VIP Users, our user ${userName} (${uidToRemove}) has been removed from VIP.`, uid);
+							}
+						}
+					});
+				} else {
+					message.reply(`${header}
+User with UID ${uidToRemove} not found.`);
+				}
+			} else {
+				message.reply(`${header}
+Please provide a valid UID to remove from the VIP list.`);
+			}
+		} else if (subcommand === "list") {
+			const vipList = await Promise.all(Object.keys(vipData).map(async (uid) => {
+				const userData = await usersData.get(uid);
+				if (userData) {
+					const userName = userData.name || "Unknown User";
+					return `• ${userName} (${uid})`;
+				} else {
+					return `• Unknown User (${uid})`;
+				}
+			}));
 
-    if (cmd === "remove" || cmd === "-r") {
-      const ids = getIds();
-      if (!ids.length) return message.reply("⚠️ Please reply/tag or provide UID.");
-      const removed = [], notVip = [];
-      const newVip = [...vip];
-      for (const id of ids) {
-        const idx = newVip.indexOf(id);
-        if (idx !== -1) { newVip.splice(idx, 1); removed.push(id); }
-        else notVip.push(id);
-      }
-      if (removed.length) {
-        config.vipuser = newVip;
-        writeFileSync(global.client.dirConfig, JSON.stringify(config, null, 2));
-        const info = await Promise.all(removed.map(id => getUser(id)));
-        await message.reply(`❌ VIP Removed Successfully!\n👤 ${info.map(u => `${u.name} (${u.id})`).join("\n")}\n📊 Removed: ${removed.length}`);
-      }
-      if (notVip.length) {
-        const info = await Promise.all(notVip.map(id => getUser(id)));
-        return message.reply(`⚠️ Not VIP\n👤 ${info.map(u => `${u.name} (${u.id})`).join("\n")}\n📊 Total: ${notVip.length}`);
-      }
-      return;
-    }
+			if (vipList.length > 0) {
+				message.reply(`${header}
 
-    return message.reply(`❌ Invalid Command\n📋 Use: ${args[0] ? args[0] : "vip"} [add|remove|list]\n👤 [@mention|reply|UID]`);
-  }
+» Our respected VIP Users:
+
+${vipList.join(`
+`) } 
+
+Use !vip add/del <uid> to add or remove participants.`);
+			} else {
+				message.reply(`${header}
+The VIP list is currently empty.`);
+			}
+		} else if (subcommand === "changelog") {
+			// Display the changelog data
+			const changelogData = loadChangelog();
+
+			if (changelogData) {
+				const changelogEntries = Object.keys(changelogData).filter((version) => parseFloat(version) >= 1.0);
+
+				if (changelogEntries.length > 0) {
+					const changelogText = changelogEntries.map((version) => `Version ${version}: ${changelogData[version]}`).join('\n');
+					message.reply(`${header}
+Current Version: ${module.exports.config.version}
+Changelog:
+${changelogText}`);
+				} else {
+					message.reply(`${header}
+Current Version: ${module.exports.config.version}
+Changelog:
+No changelog entries found starting from version 1.0.`);
+				}
+			} else {
+				message.reply("Changelog data not available.");
+			}
+		}
+	}
 };
