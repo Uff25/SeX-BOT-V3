@@ -6,35 +6,35 @@ const { createReadStream } = require("fs");
 module.exports = {
   config: {
     name: "sing",
-    version: "3.5",
+    version: "4.0",
     author: "Siam Ahmed Saan",
     countDown: 5,
     role: 0,
-    shortDescription: "Search or download MP3",
-    longDescription: "Search songs and download MP3 from YouTube",
+    shortDescription: "Search or download MP3/MP4",
+    longDescription: "Search songs and download MP3 or MP4 from YouTube",
     category: "ANIME & MEDIA",
-    guide: "{p}sing <song name or YouTube link>"
+    guide: "{p}sing <song name or YouTube link>\nভিডিওর জন্য রিপ্লাই করার সময় সংখ্যার পাশে v লিখুন (যেমন: 1 v)"
   },
 
   onStart: async function ({ api, event, args }) {
     const { threadID, messageID, senderID, messageReply } = event;
-    const BASE_URL = "https://xalman-apis.vercel.app/api";
+    const BASE_URL = "https://vercel.app";
 
     let query = args.join(" ");
 
     if (messageReply?.body) {
       const match = messageReply.body.match(/(https?:\/\/[^\s]+)/);
-      if (match?.[0]?.includes("youtu")) {
-        return downloadAudio(api, threadID, messageID, match[0], BASE_URL);
+      if (match && match[0].includes("youtu")) {
+        return downloadMedia(api, threadID, messageID, match[0], BASE_URL, "audio");
       }
     }
 
     if (query && query.includes("youtu")) {
-      return downloadAudio(api, threadID, messageID, query, BASE_URL);
+      return downloadMedia(api, threadID, messageID, query, BASE_URL, "audio");
     }
 
     if (!query) {
-      return api.sendMessage("❌ Please provide a song name or YouTube link.", threadID, messageID);
+      return api.sendMessage("❌ অনুগ্রহ করে গানের নাম অথবা ইউটিউব লিংক দিন।", threadID, messageID);
     }
 
     try {
@@ -42,10 +42,10 @@ module.exports = {
       const results = data.results?.slice(0, 5);
 
       if (!results || results.length === 0) {
-        return api.sendMessage("❌ No songs found.", threadID, messageID);
+        return api.sendMessage("❌ কোনো গান খুঁজে পাওয়া যায়নি।", threadID, messageID);
       }
 
-      let msg = "🎵 𝗠𝗨𝗦𝗜𝗖 𝗦𝗘𝗔𝗥𝗖𝗛 𝗥𝗘𝗦𝗨𝗟𝗧𝗦\n━━━━━━━━━━━━━━━\n";
+      let msg = "🎵 𝗠𝗨𝗦𝗜𝗖 & 𝗩𝗜𝗗𝗘𝗢 𝗦𝗘𝗔𝗥𝗖𝗛\n━━━━━━━━━━━━━━━\n";
       const attachments = [];
       const tempFiles = [];
 
@@ -71,7 +71,7 @@ module.exports = {
         }
       }
 
-      msg += "━━━━━━━━━━━━━━━\n📥 Reply with 1-5 to download";
+      msg += "━━━━━━━━━━━━━━━\n📥 ডাউনলোড করতে ১-৫ রিপ্লাই দিন।\n🎬 ভিডিওর জন্য সংখ্যার পাশে 'v' লিখুন (যেমন: 1 v)";
 
       const messageData = { body: msg };
       if (attachments.length > 0) {
@@ -85,7 +85,9 @@ module.exports = {
           tempFiles.forEach(file => {
             try {
               if (fs.existsSync(file)) fs.unlinkSync(file);
-            } catch {}
+            } catch (cleanupErr) {
+              console.error("Failed to delete temp thumbnail:", cleanupErr.message);
+            }
           });
 
           if (err) return;
@@ -102,8 +104,8 @@ module.exports = {
       );
 
     } catch (err) {
-      console.log(err);
-      return api.sendMessage("⚠️ Search failed.", threadID, messageID);
+      console.error(err);
+      return api.sendMessage("⚠️ অনুসন্ধান ব্যর্থ হয়েছে।", threadID, messageID);
     }
   },
 
@@ -112,33 +114,45 @@ module.exports = {
 
     if (senderID !== Reply.author) return;
 
-    const index = parseInt(body) - 1;
-    if (isNaN(index) || index < 0 || index >= Reply.results.length) {
-      return api.sendMessage("❌ Invalid choice. Choose 1-5.", threadID, messageID);
+    const input = body.trim().toLowerCase();
+    const match = input.match(/^([1-5])(?:\s*(v|video))?\$/);
+
+    if (!match) {
+      return api.sendMessage("❌ ভুল ফরম্যাট। অনুগ্রহ করে ১-৫ এর মধ্যে সংখ্যা অথবা ভিডিওর জন্য '1 v' এভাবে লিখুন।", threadID, messageID);
     }
+
+    const index = parseInt(match[1]) - 1;
+    const type = match[2] ? "video" : "audio";
 
     const selected = Reply.results[index];
 
     try {
       await api.unsendMessage(Reply.messageID, threadID);
-    } catch {}
+    } catch (err) {
+      console.error("Failed to unsend message:", err.message);
+    }
 
-    return downloadAudio(api, threadID, messageID, selected.url, Reply.baseUrl, selected.duration);
+    return downloadMedia(api, threadID, messageID, selected.url, Reply.baseUrl, type, selected.duration);
   }
 };
 
-async function downloadAudio(api, threadID, messageID, url, baseUrl, duration = "N/A") {
+async function downloadMedia(api, threadID, messageID, url, baseUrl, type = "audio", duration = "N/A") {
   let waitMsg;
   let tempFilePath = null;
+  const isVideo = type === "video";
+  const endpoint = isVideo ? "ytmp4" : "ytmp3";
+  const ext = isVideo ? "mp4" : "mp3";
 
   try {
-    waitMsg = await api.sendMessage("⏳ Processing Audio...", threadID);
+    waitMsg = await api.sendMessage(`⏳ ${isVideo ? "ভিডিও" : "অডিও"} প্রসেস করা হচ্ছে, দয়া করে অপেক্ষা করুন...`, threadID);
 
-    const { data } = await axios.get(`${baseUrl}/ytmp3?url=${encodeURIComponent(url)}`);
+    const { data } = await axios.get(`${baseUrl}/${endpoint}?url=${encodeURIComponent(url)}`);
 
     if (!data.success || !data.url) {
-      try { await api.unsendMessage(waitMsg.messageID, threadID); } catch {}
-      return api.sendMessage("❌ Failed to download audio.", threadID, messageID);
+      if (waitMsg?.messageID) {
+        try { await api.unsendMessage(waitMsg.messageID, threadID); } catch {}
+      }
+      return api.sendMessage(`❌ ${isVideo ? "ভিডিও" : "অডিও"} ডাউনলোড করতে ব্যর্থ হয়েছে।`, threadID, messageID);
     }
 
     const response = await axios({
@@ -147,14 +161,16 @@ async function downloadAudio(api, threadID, messageID, url, baseUrl, duration = 
       responseType: "arraybuffer"
     });
 
-    tempFilePath = path.join(__dirname, `temp_${Date.now()}.mp3`);
+    tempFilePath = path.join(__dirname, `temp_${Date.now()}.${ext}`);
     fs.writeFileSync(tempFilePath, response.data);
 
-    try { await api.unsendMessage(waitMsg.messageID, threadID); } catch {}
+    if (waitMsg?.messageID) {
+      try { await api.unsendMessage(waitMsg.messageID, threadID); } catch {}
+    }
 
     return api.sendMessage(
       {
-        body: `🎵 ${data.title || "Unknown"}\n👤 ${data.author || "Unknown"}\n⏱️ ${duration}`,
+        body: `🎬 ${data.title || "Unknown"}\n👤 ${data.author || "Unknown"}\n⏱️ ${duration}\n📦 টাইপ: ${isVideo ? "ভিডিও (MP4)" : "অডিও (MP3)"}`,
         attachment: createReadStream(tempFilePath)
       },
       threadID,
@@ -163,15 +179,15 @@ async function downloadAudio(api, threadID, messageID, url, baseUrl, duration = 
           try { fs.unlinkSync(tempFilePath); } catch {}
         }
         if (err) {
-          console.error("Error sending audio:", err);
-          return api.sendMessage("⚠️ Failed to send audio.", threadID, messageID);
+          console.error(`Error sending ${ext}:`, err);
+          return api.sendMessage(`⚠️ ${isVideo ? "ভিডিও" : "অডিও"} পাঠাতে সমস্যা হয়েছে। ফাইল সাইজ ফেসবুক লিমিটের বেশি হতে পারে।`, threadID, messageID);
         }
       },
       messageID
     );
 
   } catch (err) {
-    console.log(err);
+    console.error(err);
 
     if (tempFilePath && fs.existsSync(tempFilePath)) {
       try { fs.unlinkSync(tempFilePath); } catch {}
@@ -181,6 +197,6 @@ async function downloadAudio(api, threadID, messageID, url, baseUrl, duration = 
       try { await api.unsendMessage(waitMsg.messageID, threadID); } catch {}
     }
 
-    return api.sendMessage("⚠️ Failed to process audio. The file might be too large.", threadID, messageID);
+    return api.sendMessage("⚠️ ফাইলটি অনেক বড় হওয়ার কারণে অথবা এপিআই সার্ভারে ত্রুটির কারণে প্রসেস করা যায়নি।", threadID, messageID);
   }
 }
